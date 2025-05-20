@@ -1,0 +1,28 @@
+{
+  "name": "claude-mcp-agent",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest",
+    "@modelcontextprotocol/sdk": "latest",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.59.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.201.0",
+    "@opentelemetry/resources": "^2.0.1",
+    "@opentelemetry/sdk-node": "^0.201.0",
+    "@opentelemetry/semantic-conventions": "^1.33.0",
+    "typescript": "latest",
+    "zod": "latest",
+    "node-fetch": "^3.3.2",
+    "turndown": "^7.1.2",
+    "@types/turndown": "^5.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "latest"
+  }
+}
