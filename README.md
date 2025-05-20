@@ -8,6 +8,8 @@ in [src/servers](src/servers). These servers are run using the stdio transport b
 Every component in the system emits [opentelemetry](https://opentelemetry.io/) data,
 so any sink should be supported such as Datadog, Honeycomb, Signoz, etc.
 
+> *Note*: this is not meant to be production code and was thrown together to experiment with trace context propagation
+
 ## Explanation
 
 For each prompt, we start an otel [trace](https://opentelemetry.io/docs/concepts/signals/traces/) and we collect spans until the "agent"
