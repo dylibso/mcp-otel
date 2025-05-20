@@ -66,7 +66,7 @@ const result = await this.client.callTool({
 And like this when receiving on the server side:
 
 ```typescript
-const traceContext = extra._meta?.traceContext;
+const traceContext = extra._meta?.__traceContext;
 // we then tell our SDK to use this trace context as the parent span
 ```
 

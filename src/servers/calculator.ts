@@ -21,7 +21,7 @@ server.tool(
   async ({ operation, a, b }, extra: any) => {
     // Here we are *creatively reusing* the _meta property
     // to receive the trace context from the client
-    const traceContext = extra._meta?.traceContext;
+    const traceContext = extra._meta?.__traceContext;
     
     if (!traceContext) {
       return handleCalculation(operation, a, b);
