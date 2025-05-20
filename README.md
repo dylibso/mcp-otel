@@ -38,6 +38,36 @@ Having each span labeled by service also allows us to track on a service level h
 ![fetch service](docs/fetch-service.png)
 
 
+## Explanation
+
+This requires no changes in the spec or the clients to work. But it *creatively* reuses the `_meta` property to shuttle the
+trace context at the MCP protocol level.
+
+This looks something like this when making the tool call:
+
+```typescript
+const result = await this.client.callTool({
+  name: toolUse.name,
+  arguments: toolUse.arguments,
+  _meta: {
+    __traceContext: {
+      // span here is the current span
+      traceId: span.spanContext().traceId,
+      spanId: span.spanContext().spanId,
+      traceFlags: span.spanContext().traceFlags,
+      isRemote: true
+    }
+  }
+});
+```
+
+And like this when receiving on the server side:
+
+```typescript
+const traceContext = extra._meta?.traceContext;
+// we then tell our SDK to use this trace context as the parent span
+```
+
 ## Running
 
 For a simple way to collect and explore your otel data locally, run [signoz](https://signoz.io/) using docker.
