@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -5,16 +6,22 @@ import { initializeTracing, SpanStatusCode, type Span, trace, context } from '..
 import fetch from 'node-fetch';
 import TurndownService from 'turndown';
 
-const { tracer: serverTracer } = initializeTracing('mcp-fetch-server', '1.0.0');
+let serverTracer: any;
 
-const server = new McpServer({
-  name: "Fetch",
-  version: "1.0.0"
-});
+// Initialize tracing asynchronously
+(async () => {
+  const tracingSetup = await initializeTracing('mcp-fetch-server', '1.0.0');
+  serverTracer = tracingSetup.tracer;
+})();
 
 const turndownService = new TurndownService({
   headingStyle: 'atx',
   codeBlockStyle: 'fenced'
+});
+
+const server = new McpServer({
+  name: "Fetch",
+  version: "1.0.0"
 });
 
 server.tool(

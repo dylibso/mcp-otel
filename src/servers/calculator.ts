@@ -1,56 +1,90 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { initializeTracing, SpanStatusCode, type Span, trace, context } from '../tracing.js';
+import { initializeTracing, SpanStatusCode, trace, context, Span } from '../tracing.js';
 
-const { tracer: serverTracer } = initializeTracing('mcp-calculator-server', '1.0.0');
+// Initialize tracing for the server
+const { tracer: serverTracer } = await initializeTracing('mcp-calculator-server', '1.0.0');
 
 const server = new McpServer({
-  name: "Calculator",
-  version: "1.0.0"
+  name: "calculator",
+  version: "1.0.0",
 });
 
 server.tool(
   "calculate",
-  "Performs basic arithmetic operations",
+  "Perform basic arithmetic operations",
   {
     operation: z.enum(["add", "subtract", "multiply", "divide"]),
     a: z.number(),
     b: z.number()
   },
   async ({ operation, a, b }, extra: any) => {
-    // Here we are *creatively reusing* the _meta property
-    // to receive the trace context from the client
+    console.error('Calculator received extra:', JSON.stringify(extra, null, 2));
     const traceContext = extra._meta?.__traceContext;
     
     if (!traceContext) {
-      return handleCalculation(operation, a, b);
+      console.error('No trace context received from client');
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: No trace context"
+        }]
+      };
     }
-
+    
+    console.error('Received trace context:', traceContext);
+    
+    // Reconstruct the parent span context from the trace context
     const parentSpanContext = trace.wrapSpanContext(traceContext);
     const ctx = trace.setSpan(context.active(), parentSpanContext);
     
-    return new Promise((resolve, reject) => {
-      const span = serverTracer.startSpan('calculator.operation', 
-        { attributes: { 'operation.type': operation } }, 
-        ctx
-      );
-      
+    return serverTracer.startActiveSpan('calculator.operation', {}, ctx, async (span: Span) => {
       try {
-        span.setAttribute('calculator.a', a);
-        span.setAttribute('calculator.b', b);
-
-        const result = handleCalculation(operation, a, b);
-
-        span.setAttribute('calculator.result', result.content[0].text);
+        span.setAttribute('calculator.operation', operation);
+        span.setAttribute('calculator.operand.a', a);
+        span.setAttribute('calculator.operand.b', b);
+        
+        // Set input.value
+        span.setAttribute('input.value', JSON.stringify({ operation, a, b }));
+        
+        let result: number;
+        switch (operation) {
+          case "add":
+            result = a + b;
+            break;
+          case "subtract":
+            result = a - b;
+            break;
+          case "multiply":
+            result = a * b;
+            break;
+          case "divide":
+            if (b === 0) throw new Error("Division by zero");
+            result = a / b;
+            break;
+          default:
+            throw new Error(`Unknown operation: ${operation}`);
+        }
+        
+        span.setAttribute('calculator.result', result);
+        
+        // Set output.value
+        span.setAttribute('output.value', JSON.stringify({ result }));
+        
         span.setStatus({ code: SpanStatusCode.OK });
-        resolve(result);
+        return {
+          content: [{
+            type: "text" as const,
+            text: String(result)
+          }]
+        };
       } catch (error) {
         span.setStatus({
           code: SpanStatusCode.ERROR,
-          message: error instanceof Error ? error.message : 'Calculator operation failed'
+          message: error instanceof Error ? error.message : 'Calculation failed'
         });
-        reject(error);
+        throw error;
       } finally {
         span.end();
       }
@@ -58,33 +92,6 @@ server.tool(
   }
 );
 
-function handleCalculation(operation: string, a: number, b: number) {
-  let result = 0;
-  switch (operation) {
-    case "add":
-      result = a + b;
-      break;
-    case "subtract":
-      result = a - b;
-      break;
-    case "multiply":
-      result = a * b;
-      break;
-    case "divide":
-      if (b === 0) {
-        throw new Error("Division by zero");
-      }
-      result = a / b;
-      break;
-  }
-  
-  return {
-    content: [{
-      type: "text" as const,
-      text: String(result)
-    }]
-  };
-}
-
 const transport = new StdioServerTransport();
 await server.connect(transport);
+console.error("Calculator server running on stdio");
